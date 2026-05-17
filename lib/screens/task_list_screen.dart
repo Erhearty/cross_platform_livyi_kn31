@@ -3,7 +3,9 @@ import '../models/task.dart';
 import '../colors.dart';
 import '../routes.dart';
 import '../services/storage_service.dart';
+import '../services/calendar_service.dart';
 import '../theme_ext.dart';
+import '../widgets/weather_widget.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({Key? key}) : super(key: key);
@@ -15,11 +17,36 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   List<Task> _tasks = [];
   bool _isLoading = true;
+  bool _calendarSyncEnabled = false;
+  final _weatherKey = GlobalKey<WeatherAppBarBottomState>();
 
   @override
   void initState() {
     super.initState();
     _loadTasks();
+    _loadSyncState();
+  }
+
+  Future<void> _loadSyncState() async {
+    final enabled = await CalendarService.isSyncEnabled();
+    final signedIn = await CalendarService.isSignedIn();
+    final pending = await CalendarService.isSyncPending();
+    if (!mounted) return;
+    setState(() => _calendarSyncEnabled = enabled && signedIn);
+    if (pending && signedIn) {
+      await CalendarService.clearSyncPending();
+      await CalendarService.syncAllTasks(_tasks, _updateTask);
+    }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ));
   }
 
   Future<void> _loadTasks() async {
@@ -103,17 +130,40 @@ class _TaskListScreenState extends State<TaskListScreen> {
     _save();
   }
 
-  void _deleteTask(String id) {
+  void _deleteTask(String id) async {
+    final task = _tasks.firstWhere((t) => t.id == id);
+    if (_calendarSyncEnabled && task.calendarEventId != null) {
+      try {
+        await CalendarService.deleteEvent(task.calendarEventId!);
+      } catch (_) {
+        _showError('Помилка видалення з Google Календаря');
+      }
+    }
     setState(() => _tasks.removeWhere((t) => t.id == id));
     _save();
   }
 
-  void _updateTask(Task updated) {
+  void _updateTask(Task updated) async {
     setState(() {
       final index = _tasks.indexWhere((t) => t.id == updated.id);
       if (index != -1) _tasks[index] = updated;
     });
     _save();
+    if (_calendarSyncEnabled) {
+      try {
+        if (updated.calendarEventId != null) {
+          await CalendarService.updateEvent(updated);
+        } else {
+          final id = await CalendarService.createEvent(updated);
+          if (id != null) {
+            updated.calendarEventId = id;
+            _save();
+          }
+        }
+      } catch (_) {
+        _showError('Помилка синхронізації з Google Календарем');
+      }
+    }
   }
 
   void _navigateToAddTask() async {
@@ -124,8 +174,20 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
     if (!mounted) return;
     if (result != null) {
-      setState(() => _tasks.add(result as Task));
+      final task = result as Task;
+      setState(() => _tasks.add(task));
       _save();
+      if (_calendarSyncEnabled) {
+        try {
+          final id = await CalendarService.createEvent(task);
+          if (id != null) {
+            task.calendarEventId = id;
+            _save();
+          }
+        } catch (_) {
+          _showError('Помилка синхронізації з Google Календарем');
+        }
+      }
     }
   }
 
@@ -158,11 +220,16 @@ class _TaskListScreenState extends State<TaskListScreen> {
         centerTitle: true,
         backgroundColor: AppColors.primary,
         elevation: 0,
+        bottom: WeatherAppBarBottom(key: _weatherKey),
         actions: [
           IconButton(
             icon: const Icon(Icons.storage, color: Colors.white),
             tooltip: 'SharedPreferences',
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.prefsDemo),
+            onPressed: () async {
+              await Navigator.pushNamed(context, AppRoutes.prefsDemo);
+              _weatherKey.currentState?.refresh();
+              _loadSyncState();
+            },
           ),
         ],
       ),

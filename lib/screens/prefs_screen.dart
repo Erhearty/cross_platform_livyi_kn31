@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../colors.dart';
 import '../main.dart';
+import '../services/calendar_service.dart';
+import '../services/weather_service.dart';
 import '../theme_ext.dart';
 
 // Демонстраційний екран SharedPreferences:
@@ -28,6 +30,14 @@ class _PrefsScreenState extends State<PrefsScreen> {
   bool    _notifications = false;
   bool    _isDark        = false;
 
+  // Weather
+  String? _selectedCityName;
+
+  // Google Calendar
+  bool    _calendarSignedIn   = false;
+  bool    _calendarSyncEnabled = false;
+  String? _calendarUserEmail;
+
   // ---------- ініціалізація ----------
   @override
   void initState() {
@@ -38,11 +48,17 @@ class _PrefsScreenState extends State<PrefsScreen> {
   // Зчитуємо всі значення при відкритті екрану
   Future<void> _loadAll() async {
     final prefs = await SharedPreferences.getInstance();
+    final signedIn   = await CalendarService.isSignedIn();
+    final syncEnabled = await CalendarService.isSyncEnabled();
+    final cityData   = await WeatherService.getSelectedCity();
     setState(() {
       _savedText      = prefs.getString(_kText);
       _counter        = prefs.getInt(_kCounter)       ?? 0;
       _notifications  = prefs.getBool(_kNotifications) ?? false;
       _isDark         = prefs.getBool(_kDarkMode)       ?? false;
+      _selectedCityName   = cityData?['name'];
+      _calendarSignedIn   = signedIn;
+      _calendarSyncEnabled = syncEnabled;
     });
     if (_savedText != null) _textController.text = _savedText!;
   }
@@ -119,6 +135,42 @@ class _PrefsScreenState extends State<PrefsScreen> {
     MyApp.setTheme(context, dark ? ThemeMode.dark : ThemeMode.light);
   }
 
+  // ---------- Weather ----------
+  Future<void> _setCityWeather(Map<String, String> city) async {
+    await WeatherService.saveCity(city['name']!, city['lat']!, city['lon']!);
+    setState(() => _selectedCityName = city['name']);
+    _snack('Місто обрано: ${city['name']!}');
+  }
+
+  // ---------- Google Calendar ----------
+  Future<void> _signInCalendar() async {
+    final account = await CalendarService.signIn();
+    if (account == null) {
+      _snack('Вхід скасовано');
+      return;
+    }
+    setState(() {
+      _calendarSignedIn  = true;
+      _calendarUserEmail = account.email;
+    });
+    _snack('Вхід виконано: ${account.email}');
+  }
+
+  Future<void> _signOutCalendar() async {
+    await CalendarService.signOut();
+    setState(() {
+      _calendarSignedIn    = false;
+      _calendarSyncEnabled = false;
+      _calendarUserEmail   = null;
+    });
+    _snack('Вихід виконано. Події у Google Календарі збережені.');
+  }
+
+  Future<void> _setSyncEnabled(bool val) async {
+    await CalendarService.setSyncEnabled(val);
+    setState(() => _calendarSyncEnabled = val);
+  }
+
   // ---------- допоміжні ----------
   void _snack(String msg) {
     ScaffoldMessenger.of(context)
@@ -170,6 +222,14 @@ class _PrefsScreenState extends State<PrefsScreen> {
 
           _header('Практичне застосування: тема'),
           _buildThemeCard(),
+          const SizedBox(height: 20),
+
+          _header('Погода'),
+          _buildWeatherCard(),
+          const SizedBox(height: 20),
+
+          _header('Google Календар'),
+          _buildCalendarCard(),
           const SizedBox(height: 16),
         ],
       ),
@@ -283,6 +343,86 @@ class _PrefsScreenState extends State<PrefsScreen> {
           const Text(
             'Вибір зберігається у SharedPreferences та відновлюється при повторному запуску.',
             style: TextStyle(fontSize: 12, color: AppColors.textHint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 5. Погода ──────────────────────────────────────────────────────────────
+  Widget _buildWeatherCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _valueRow(
+            'Поточне місто',
+            _selectedCityName ?? 'не обрано',
+            dim: _selectedCityName == null,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: kUkrainianCities.map((city) {
+              final selected = _selectedCityName == city['name'];
+              return _themeBtn(
+                city['name']!,
+                Icons.location_city,
+                selected,
+                () => _setCityWeather(city),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Дані надає open-meteo.com. Оновлення кожні 30 хвилин.',
+            style: TextStyle(fontSize: 12, color: context.textHint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 6. Google Календар ─────────────────────────────────────────────────────
+  Widget _buildCalendarCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!_calendarSignedIn) ...[
+            Text(
+              'Синхронізуйте завдання з Google Календарем.',
+              style: TextStyle(fontSize: 13, color: context.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            _btn('Увійти через Google', Icons.login, AppColors.primary, _signInCalendar),
+          ] else ...[
+            _valueRow('Акаунт', _calendarUserEmail ?? '—'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _valueRow(
+                    'Синхронізація',
+                    _calendarSyncEnabled ? 'Увімкнена' : 'Вимкнена',
+                    accent: _calendarSyncEnabled ? AppColors.completed : null,
+                  ),
+                ),
+                Switch(
+                  value: _calendarSyncEnabled,
+                  onChanged: _setSyncEnabled,
+                  activeColor: AppColors.completed,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _btn('Вийти', Icons.logout, AppColors.deleteRed, _signOutCalendar),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'При вході існуючі завдання автоматично додаються до Google Календаря.',
+            style: TextStyle(fontSize: 12, color: context.textHint),
           ),
         ],
       ),

@@ -33,6 +33,10 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.0
+  http: ^1.2.2
+  googleapis: ^13.2.0
+  google_sign_in: ^6.2.2
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
 
 dev_dependencies:
   flutter_test:
