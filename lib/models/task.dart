@@ -37,4 +37,29 @@ class Task {
       default:       return '';
     }
   }
+
+  // Серіалізація для збереження у SharedPreferences
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'isCompleted': isCompleted,
+    'category': category,
+    'priority': priority,
+    'createdAt': createdAt.millisecondsSinceEpoch,
+    'deadline': deadline?.millisecondsSinceEpoch,
+  };
+
+  factory Task.fromJson(Map<String, dynamic> map) => Task(
+    id: map['id'] as String,
+    title: map['title'] as String,
+    description: (map['description'] as String?) ?? '',
+    isCompleted: map['isCompleted'] as bool,
+    category: map['category'] as String,
+    priority: map['priority'] as String,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
+    deadline: map['deadline'] != null
+        ? DateTime.fromMillisecondsSinceEpoch(map['deadline'] as int)
+        : null,
+  );
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../colors.dart';
 import '../routes.dart';
+import '../services/storage_service.dart';
+import '../theme_ext.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({Key? key}) : super(key: key);
@@ -12,83 +14,98 @@ class TaskListScreen extends StatefulWidget {
 
 class _TaskListScreenState extends State<TaskListScreen> {
   List<Task> _tasks = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tasks = [
-      Task(
-        id: '1',
-        title: 'Підготувати звіт для клієнта',
-        description: 'Підготувати квартальний звіт. Включити всі ключові показники.',
-        isCompleted: true,
-        category: 'work',
-        priority: 'high',
-        createdAt: DateTime(2026, 3, 10, 14, 30),
-        deadline: DateTime(2026, 3, 15, 18, 0),
-      ),
-      Task(
-        id: '2',
-        title: 'Зустріч з командою',
-        description: 'Обговорити плани на наступний спринт.',
-        isCompleted: false,
-        category: 'work',
-        priority: 'medium',
-        createdAt: DateTime(2026, 3, 10),
-        deadline: DateTime(2026, 3, 20),
-      ),
-      Task(
-        id: '3',
-        title: 'Прочитати книгу',
-        description: 'Дочитати "Clean Code".',
-        isCompleted: true,
-        category: 'study',
-        priority: 'low',
-        createdAt: DateTime(2026, 3, 8),
-      ),
-      Task(
-        id: '4',
-        title: 'Купити продукти',
-        description: 'Молоко, хліб, овочі, фрукти.',
-        isCompleted: false,
-        category: 'shopping',
-        priority: 'medium',
-        createdAt: DateTime(2026, 3, 9),
-        deadline: DateTime(2026, 3, 11),
-      ),
-      Task(
-        id: '5',
-        title: 'Похід у спортзал',
-        description: 'Тренування — кардіо + силові вправи.',
-        isCompleted: false,
-        category: 'personal',
-        priority: 'low',
-        createdAt: DateTime(2026, 3, 10),
-      ),
-      Task(
-        id: '6',
-        title: 'Вивчити Flutter',
-        description: 'Пройти урок про StatefulWidget.',
-        isCompleted: true,
-        category: 'study',
-        priority: 'high',
-        createdAt: DateTime(2026, 3, 7),
-        deadline: DateTime(2026, 3, 26),
-      ),
-    ];
+    _loadTasks();
   }
+
+  Future<void> _loadTasks() async {
+    final stored = await StorageService.loadTasks();
+    if (!mounted) return;
+    setState(() {
+      _tasks = stored.isNotEmpty ? stored : _seedTasks();
+      _isLoading = false;
+    });
+    if (stored.isEmpty) await StorageService.saveTasks(_tasks);
+  }
+
+  List<Task> _seedTasks() => [
+    Task(
+      id: '1',
+      title: '[TEST]Підготувати звіт для клієнта',
+      description: 'Підготувати квартальний звіт. Включити всі ключові показники.',
+      isCompleted: true,
+      category: 'work',
+      priority: 'high',
+      createdAt: DateTime(2026, 3, 10, 14, 30),
+      deadline: DateTime(2026, 3, 15, 18, 0),
+    ),
+    Task(
+      id: '2',
+      title: '[TEST]Зустріч з командою',
+      description: 'Обговорити плани на наступний спринт.',
+      isCompleted: false,
+      category: 'work',
+      priority: 'medium',
+      createdAt: DateTime(2026, 3, 10),
+      deadline: DateTime(2026, 3, 20),
+    ),
+    Task(
+      id: '3',
+      title: '[TEST]Прочитати книгу',
+      description: 'Дочитати "Clean Code".',
+      isCompleted: true,
+      category: 'study',
+      priority: 'low',
+      createdAt: DateTime(2026, 3, 8),
+    ),
+    Task(
+      id: '4',
+      title: '[TEST]Купити продукти',
+      description: 'Молоко, хліб, овочі, фрукти.',
+      isCompleted: false,
+      category: 'shopping',
+      priority: 'medium',
+      createdAt: DateTime(2026, 3, 9),
+      deadline: DateTime(2026, 3, 11),
+    ),
+    Task(
+      id: '5',
+      title: '[TEST]Похід у спортзал',
+      description: 'Тренування — кардіо + силові вправи.',
+      isCompleted: false,
+      category: 'personal',
+      priority: 'low',
+      createdAt: DateTime(2026, 3, 10),
+    ),
+    Task(
+      id: '6',
+      title: '[TEST]Вивчити Flutter',
+      description: 'Пройти урок про StatefulWidget.',
+      isCompleted: true,
+      category: 'study',
+      priority: 'high',
+      createdAt: DateTime(2026, 3, 7),
+      deadline: DateTime(2026, 3, 26),
+    ),
+  ];
+
+  Future<void> _save() => StorageService.saveTasks(_tasks);
 
   void _toggleTaskStatus(String id) {
     setState(() {
       final task = _tasks.firstWhere((t) => t.id == id);
       task.isCompleted = !task.isCompleted;
     });
+    _save();
   }
 
   void _deleteTask(String id) {
-    setState(() {
-      _tasks.removeWhere((t) => t.id == id);
-    });
+    setState(() => _tasks.removeWhere((t) => t.id == id));
+    _save();
   }
 
   void _updateTask(Task updated) {
@@ -96,9 +113,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
       final index = _tasks.indexWhere((t) => t.id == updated.id);
       if (index != -1) _tasks[index] = updated;
     });
+    _save();
   }
 
-  // Перехід на AddTaskScreen; очікуємо Task? — якщо не null, додаємо до списку
   void _navigateToAddTask() async {
     final result = await Navigator.pushNamed(
       context,
@@ -108,11 +125,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
     if (!mounted) return;
     if (result != null) {
       setState(() => _tasks.add(result as Task));
+      _save();
     }
   }
 
-  // Перехід на TaskDetailScreen; очікуємо Task? —
-  // Task → оновити, null → видалити
   void _onTaskTapped(Task task) async {
     final result = await Navigator.pushNamed(
       context,
@@ -133,7 +149,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.bg,
       appBar: AppBar(
         title: const Text(
           'Мої завдання',
@@ -144,24 +160,27 @@ class _TaskListScreenState extends State<TaskListScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.storage, color: Colors.white),
+            tooltip: 'SharedPreferences',
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.prefsDemo),
           ),
         ],
       ),
-      body: _tasks.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              itemCount: _tasks.length,
-              itemBuilder: (context, index) => TaskListItem(
-                task: _tasks[index],
-                onTap: () => _onTaskTapped(_tasks[index]),
-                onToggle: () => _toggleTaskStatus(_tasks[index].id),
-                onDelete: () => _deleteTask(_tasks[index].id),
-                formatDate: _formatDate,
-              ),
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _tasks.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  itemCount: _tasks.length,
+                  itemBuilder: (context, index) => TaskListItem(
+                    task: _tasks[index],
+                    onTap: () => _onTaskTapped(_tasks[index]),
+                    onToggle: () => _toggleTaskStatus(_tasks[index].id),
+                    onDelete: () => _deleteTask(_tasks[index].id),
+                    formatDate: _formatDate,
+                  ),
+                ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddTask,
         backgroundColor: AppColors.primary,
@@ -177,14 +196,18 @@ class _TaskListScreenState extends State<TaskListScreen> {
         children: [
           Icon(Icons.check_circle_outline, size: 80, color: AppColors.primaryLight),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Завдань немає',
-            style: TextStyle(fontSize: 20, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 20,
+              color: context.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Натисніть + щоб додати нове завдання',
-            style: TextStyle(color: AppColors.textHint),
+            style: TextStyle(color: context.textHint),
           ),
         ],
       ),
@@ -233,7 +256,8 @@ class TaskListItem extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
       elevation: 2,
-      shadowColor: AppColors.cardShadow,
+      color: context.cardBg,
+      shadowColor: context.shadowCol,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -257,14 +281,15 @@ class TaskListItem extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: task.isCompleted ? AppColors.textHint : AppColors.textPrimary,
+                        color: task.isCompleted ? context.textHint : context.textPrimary,
                         decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                        decorationColor: context.textHint,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Створено: ${formatDate(task.createdAt)}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                   ],
                 ),
