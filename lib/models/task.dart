@@ -7,6 +7,7 @@ class Task {
   String priority; // 'high', 'medium', 'low'
   final DateTime createdAt;
   DateTime? deadline;
+  String? calendarEventId;
 
   Task({
     required this.id,
@@ -17,6 +18,7 @@ class Task {
     this.priority = 'high',
     required this.createdAt,
     this.deadline,
+    this.calendarEventId,
   });
 
   static String categoryLabel(String category) {
@@ -48,6 +50,7 @@ class Task {
     'priority': priority,
     'createdAt': createdAt.millisecondsSinceEpoch,
     'deadline': deadline?.millisecondsSinceEpoch,
+    'calendarEventId': calendarEventId,
   };
 
   factory Task.fromJson(Map<String, dynamic> map) => Task(
@@ -61,5 +64,6 @@ class Task {
     deadline: map['deadline'] != null
         ? DateTime.fromMillisecondsSinceEpoch(map['deadline'] as int)
         : null,
+    calendarEventId: map['calendarEventId'] as String?,
   );
 }
