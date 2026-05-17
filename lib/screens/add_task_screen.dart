@@ -3,25 +3,25 @@ import '../models/task.dart';
 import '../colors.dart';
 
 class AddTaskScreen extends StatefulWidget {
-  final void Function(Task) onAddTask;
+  // null = режим додавання, не-null = режим редагування
+  final Task? existingTask;
 
-  const AddTaskScreen({Key? key, required this.onAddTask}) : super(key: key);
+  const AddTaskScreen({Key? key, this.existingTask}) : super(key: key);
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
 }
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
-  // Контролери полів введення
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  // Стан вибраних значень
   String _selectedCategory = 'work';
   String _selectedPriority = 'high';
-  DateTime _selectedDate = DateTime(2026, 3, 15);
+  late DateTime _selectedDate;
 
-  // Списки категорій та пріоритетів
+  bool get _isEditing => widget.existingTask != null;
+
   static const List<Map<String, dynamic>> _categories = [
     {'id': 'work',     'label': 'Робота',   'icon': Icons.work,          'color': AppColors.work},
     {'id': 'personal', 'label': 'Особисте', 'icon': Icons.person,        'color': AppColors.personal},
@@ -35,11 +35,25 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     {'id': 'low',    'label': 'Низький',  'color': AppColors.low},
   ];
 
-  // Форматування дати
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingTask;
+    if (existing != null) {
+      // Режим редагування — заповнюємо поля з існуючого завдання
+      _titleController.text = existing.title;
+      _descriptionController.text = existing.description;
+      _selectedCategory = existing.category;
+      _selectedPriority = existing.priority;
+      _selectedDate = existing.deadline ?? DateTime.now().add(const Duration(days: 7));
+    } else {
+      _selectedDate = DateTime.now().add(const Duration(days: 7));
+    }
+  }
+
   String get _formattedDate =>
       '${_selectedDate.day.toString().padLeft(2, '0')}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.year}';
 
-  // Відкриває DatePicker
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -55,14 +69,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         );
       },
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-      print('[AddTask] Обрано дату: $_formattedDate');
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  // Створення та збереження завдання
-  void _createTask() {
+  // Створює/оновлює Task і повертає його через Navigator.pop
+  void _saveTask() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,31 +85,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       return;
     }
 
-    final newTask = Task(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    final existing = widget.existingTask;
+    final task = Task(
+      id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       description: _descriptionController.text.trim(),
-      isCompleted: false,
+      isCompleted: existing?.isCompleted ?? false,
       category: _selectedCategory,
-      date: DateTime.now(),
+      priority: _selectedPriority,
+      createdAt: existing?.createdAt ?? DateTime.now(),
       deadline: _selectedDate,
     );
 
-    // Виводимо дані в консоль
-    print('[AddTask] Нове завдання:');
-    print('  Назва: ${newTask.title}');
-    print('  Опис: ${newTask.description}');
-    print('  Категорія: ${newTask.category}');
-    print('  Пріоритет: $_selectedPriority');
-    print('  Дедлайн: $_formattedDate');
-
-    widget.onAddTask(newTask);
-    Navigator.pop(context);
+    // Повертаємо Task на попередній екран
+    Navigator.pop(context, task);
   }
 
   @override
   void dispose() {
-    // Звільняємо ресурси контролерів
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -109,14 +113,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Нове завдання',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          _isEditing ? 'Редагувати завдання' : 'Нове завдання',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
+          // Закриває без повернення даних
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
@@ -126,7 +131,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Назва завдання ---
             _buildSectionLabel('Назва завдання'),
             const SizedBox(height: 8),
             TextField(
@@ -138,7 +142,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 8),
 
-            // --- Опис ---
             _buildSectionLabel('Опис'),
             const SizedBox(height: 8),
             TextField(
@@ -150,7 +153,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 20),
 
-            // --- Категорія ---
             _buildSectionLabel('Категорія'),
             const SizedBox(height: 12),
             Row(
@@ -158,10 +160,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               children: _categories.map((cat) {
                 final isSelected = _selectedCategory == cat['id'];
                 return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedCategory = cat['id'] as String);
-                    print('[AddTask] Обрано категорію: ${cat['label']}');
-                  },
+                  onTap: () => setState(() => _selectedCategory = cat['id'] as String),
                   child: Column(
                     children: [
                       Container(
@@ -178,9 +177,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ),
                         child: Icon(
                           cat['icon'] as IconData,
-                          color: isSelected
-                              ? cat['color'] as Color
-                              : AppColors.textHint,
+                          color: isSelected ? cat['color'] as Color : AppColors.textHint,
                           size: 28,
                         ),
                       ),
@@ -189,12 +186,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         cat['label'] as String,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isSelected
-                              ? cat['color'] as Color
-                              : AppColors.textSecondary,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          color: isSelected ? cat['color'] as Color : AppColors.textSecondary,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -205,7 +198,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 20),
 
-            // --- Дата виконання ---
             _buildSectionLabel('Дата виконання'),
             const SizedBox(height: 8),
             GestureDetector(
@@ -227,8 +219,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     const Icon(Icons.calendar_today_outlined,
                         color: AppColors.textSecondary, size: 20),
                     const SizedBox(width: 8),
-                    const Icon(Icons.arrow_drop_down,
-                        color: AppColors.textSecondary),
+                    const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
                   ],
                 ),
               ),
@@ -236,7 +227,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 20),
 
-            // --- Пріоритет ---
             _buildSectionLabel('Пріоритет'),
             const SizedBox(height: 12),
             Row(
@@ -245,16 +235,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: OutlinedButton(
-                    onPressed: () {
-                      setState(() => _selectedPriority = p['id'] as String);
-                      print('[AddTask] Обрано пріоритет: ${p['label']}');
-                    },
+                    onPressed: () => setState(() => _selectedPriority = p['id'] as String),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: p['color'] as Color,
                       side: BorderSide(
-                        color: isSelected
-                            ? p['color'] as Color
-                            : AppColors.divider,
+                        color: isSelected ? p['color'] as Color : AppColors.divider,
                         width: isSelected ? 2 : 1,
                       ),
                       backgroundColor: isSelected
@@ -263,15 +248,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                     child: Text(
                       p['label'] as String,
                       style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -281,25 +263,44 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 32),
 
-            // --- Кнопка "Створити завдання" ---
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _createTask,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            // Кнопки «Скасувати» та «Створити / Зберегти»
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    // Закриває екран без повернення даних
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('Скасувати', style: TextStyle(fontSize: 16)),
                   ),
                 ),
-                child: const Text(
-                  'Створити завдання',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _saveTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 3,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      _isEditing ? 'Зберегти' : 'Створити',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
 
             const SizedBox(height: 16),
@@ -309,7 +310,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  // Заголовок секції
   Widget _buildSectionLabel(String text) {
     return Text(
       text,
@@ -322,7 +322,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  // Декорація текстових полів
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,

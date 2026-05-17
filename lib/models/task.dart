@@ -1,11 +1,11 @@
-// Модель даних для завдання
 class Task {
   final String id;
   String title;
   String description;
   bool isCompleted;
   String category; // 'work', 'personal', 'study', 'shopping'
-  DateTime date;
+  String priority; // 'high', 'medium', 'low'
+  final DateTime createdAt;
   DateTime? deadline;
 
   Task({
@@ -14,23 +14,27 @@ class Task {
     this.description = '',
     this.isCompleted = false,
     this.category = 'work',
-    required this.date,
+    this.priority = 'high',
+    required this.createdAt,
     this.deadline,
   });
 
-  // Іконка категорії
   static String categoryLabel(String category) {
     switch (category) {
-      case 'work':
-        return 'Робота';
-      case 'personal':
-        return 'Особисте';
-      case 'study':
-        return 'Навчання';
-      case 'shopping':
-        return 'Покупки';
-      default:
-        return 'Інше';
+      case 'work':     return 'Робота';
+      case 'personal': return 'Особисте';
+      case 'study':    return 'Навчання';
+      case 'shopping': return 'Покупки';
+      default:         return 'Інше';
+    }
+  }
+
+  static String priorityLabel(String priority) {
+    switch (priority) {
+      case 'high':   return 'Високий пріоритет';
+      case 'medium': return 'Середній пріоритет';
+      case 'low':    return 'Низький пріоритет';
+      default:       return '';
     }
   }
 }
