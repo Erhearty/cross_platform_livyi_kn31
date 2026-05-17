@@ -3,11 +3,13 @@ import 'models/task.dart';
 import 'screens/task_list_screen.dart';
 import 'screens/add_task_screen.dart';
 import 'screens/task_detail_screen.dart';
+import 'screens/prefs_screen.dart';
 
 class AppRoutes {
-  static const String taskList = '/';
-  static const String addTask = '/add-task';
+  static const String taskList  = '/';
+  static const String addTask   = '/add-task';
   static const String taskDetail = '/task-detail';
+  static const String prefsDemo = '/prefs-demo';
 }
 
 // existingTask == null → режим додавання; != null → режим редагування
@@ -24,9 +26,7 @@ class TaskDetailArguments {
 Route<dynamic> onGenerateRoute(RouteSettings settings) {
   switch (settings.name) {
     case AppRoutes.taskList:
-      return MaterialPageRoute(
-        builder: (_) => const TaskListScreen(),
-      );
+      return MaterialPageRoute(builder: (_) => const TaskListScreen());
 
     case AppRoutes.addTask:
       final args = settings.arguments as AddTaskArguments?;
@@ -39,6 +39,9 @@ Route<dynamic> onGenerateRoute(RouteSettings settings) {
       return MaterialPageRoute(
         builder: (_) => TaskDetailScreen(task: args.task),
       );
+
+    case AppRoutes.prefsDemo:
+      return MaterialPageRoute(builder: (_) => const PrefsScreen());
 
     default:
       return MaterialPageRoute(

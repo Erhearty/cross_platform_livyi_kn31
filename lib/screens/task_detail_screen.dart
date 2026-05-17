@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../colors.dart';
 import '../routes.dart';
+import '../theme_ext.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Task task;
@@ -118,7 +119,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         if (!didPop) Navigator.pop(context, widget.task);
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: context.bg,
         appBar: AppBar(
           title: const Text(
             'Деталі завдання',
@@ -152,7 +153,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: catColor.withOpacity(0.15),
+                  color: catColor.withValues(alpha: 0.15),
                 ),
                 child: Icon(catIcon, size: 52, color: catColor),
               ),
@@ -162,10 +163,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               Text(
                 task.title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: context.textPrimary,
                 ),
               ),
 
@@ -194,7 +195,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               if (task.description.isNotEmpty)
                 Card(
                   elevation: 2,
-                  shadowColor: AppColors.cardShadow,
+                  shadowColor: context.shadowCol,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   child: Padding(
@@ -203,16 +204,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
-                            Icon(Icons.description_outlined,
+                          children: [
+                            const Icon(Icons.description_outlined,
                                 color: AppColors.primary, size: 20),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Text(
                               'Опис',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
-                                color: AppColors.textPrimary,
+                                color: context.textPrimary,
                               ),
                             ),
                           ],
@@ -220,9 +221,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         const SizedBox(height: 10),
                         Text(
                           task.description,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                             height: 1.5,
                           ),
                         ),
@@ -236,7 +237,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               // Блок дат — використовує createdAt
               Card(
                 elevation: 2,
-                shadowColor: AppColors.cardShadow,
+                shadowColor: context.shadowCol,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 child: Column(
@@ -265,7 +266,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               // Статус виконання з Switch
               Card(
                 elevation: 2,
-                shadowColor: AppColors.cardShadow,
+                shadowColor: context.shadowCol,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 child: Padding(
@@ -279,8 +280,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _isCompleted
-                              ? AppColors.completed.withOpacity(0.15)
-                              : AppColors.pending.withOpacity(0.2),
+                              ? AppColors.completed.withValues(alpha: 0.15)
+                              : AppColors.pending.withValues(alpha: 0.2),
                         ),
                         child: Icon(
                           _isCompleted
@@ -293,13 +294,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Статус виконання',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -374,7 +375,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -413,7 +414,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: iconColor.withOpacity(0.12),
+                  color: iconColor.withValues(alpha: 0.12),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
@@ -423,17 +424,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.textPrimary,
+                      color: context.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -442,7 +443,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ],
           ),
         ),
-        if (showDivider) const Divider(height: 1, color: AppColors.divider),
+        if (showDivider) Divider(height: 1, color: context.divider),
       ],
     );
   }

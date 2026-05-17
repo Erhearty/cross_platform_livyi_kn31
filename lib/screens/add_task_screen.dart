@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../colors.dart';
+import '../theme_ext.dart';
 
 class AddTaskScreen extends StatefulWidget {
-  // null = режим додавання, не-null = режим редагування
   final Task? existingTask;
-
   const AddTaskScreen({Key? key, this.existingTask}) : super(key: key);
 
   @override
@@ -40,7 +39,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     super.initState();
     final existing = widget.existingTask;
     if (existing != null) {
-      // Режим редагування — заповнюємо поля з існуючого завдання
       _titleController.text = existing.title;
       _descriptionController.text = existing.description;
       _selectedCategory = existing.category;
@@ -60,19 +58,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       initialDate: _selectedDate,
       firstDate: DateTime.now(),
       lastDate: DateTime(2027),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary),
-          ),
-          child: child!,
-        );
-      },
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  // Створює/оновлює Task і повертає його через Navigator.pop
   void _saveTask() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -84,7 +79,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       );
       return;
     }
-
     final existing = widget.existingTask;
     final task = Task(
       id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -96,8 +90,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       createdAt: existing?.createdAt ?? DateTime.now(),
       deadline: _selectedDate,
     );
-
-    // Повертаємо Task на попередній екран
     Navigator.pop(context, task);
   }
 
@@ -111,7 +103,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.bg,
       appBar: AppBar(
         title: Text(
           _isEditing ? 'Редагувати завдання' : 'Нове завдання',
@@ -121,7 +113,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         backgroundColor: AppColors.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          // Закриває без повернення даних
           onPressed: () => Navigator.pop(context),
         ),
         elevation: 0,
@@ -131,34 +122,35 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionLabel('Назва завдання'),
+            _sectionLabel('Назва завдання'),
             const SizedBox(height: 8),
             TextField(
               controller: _titleController,
-              decoration: _inputDecoration('Введіть назву завдання'),
+              decoration: _inputDecor('Введіть назву завдання'),
               maxLength: 80,
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(fontSize: 15, color: context.textPrimary),
             ),
 
             const SizedBox(height: 8),
 
-            _buildSectionLabel('Опис'),
+            _sectionLabel('Опис'),
             const SizedBox(height: 8),
             TextField(
               controller: _descriptionController,
-              decoration: _inputDecoration('Додайте детальний опис завдання'),
+              decoration: _inputDecor('Додайте детальний опис завдання'),
               maxLines: 4,
-              style: const TextStyle(fontSize: 15),
+              style: TextStyle(fontSize: 15, color: context.textPrimary),
             ),
 
             const SizedBox(height: 20),
 
-            _buildSectionLabel('Категорія'),
+            _sectionLabel('Категорія'),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: _categories.map((cat) {
                 final isSelected = _selectedCategory == cat['id'];
+                final color = cat['color'] as Color;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedCategory = cat['id'] as String),
                   child: Column(
@@ -169,15 +161,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: isSelected
-                              ? (cat['color'] as Color).withOpacity(0.15)
-                              : Colors.grey.shade100,
+                              ? color.withValues(alpha: 0.15)
+                              : context.inactiveBg,
                           border: isSelected
-                              ? Border.all(color: cat['color'] as Color, width: 2)
+                              ? Border.all(color: color, width: 2)
                               : null,
                         ),
                         child: Icon(
                           cat['icon'] as IconData,
-                          color: isSelected ? cat['color'] as Color : AppColors.textHint,
+                          color: isSelected ? color : context.textHint,
                           size: 28,
                         ),
                       ),
@@ -186,7 +178,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         cat['label'] as String,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isSelected ? cat['color'] as Color : AppColors.textSecondary,
+                          color: isSelected ? color : context.textSecondary,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -198,28 +190,28 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 20),
 
-            _buildSectionLabel('Дата виконання'),
+            _sectionLabel('Дата виконання'),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: _pickDate,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: context.divider),
                 ),
                 child: Row(
                   children: [
                     Text(
                       _formattedDate,
-                      style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 15, color: context.textPrimary),
                     ),
                     const Spacer(),
-                    const Icon(Icons.calendar_today_outlined,
-                        color: AppColors.textSecondary, size: 20),
+                    Icon(Icons.calendar_today_outlined,
+                        color: context.textSecondary, size: 20),
                     const SizedBox(width: 8),
-                    const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                    Icon(Icons.arrow_drop_down, color: context.textSecondary),
                   ],
                 ),
               ),
@@ -227,27 +219,27 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 20),
 
-            _buildSectionLabel('Пріоритет'),
+            _sectionLabel('Пріоритет'),
             const SizedBox(height: 12),
             Row(
               children: _priorities.map((p) {
                 final isSelected = _selectedPriority == p['id'];
+                final color = p['color'] as Color;
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: OutlinedButton(
                     onPressed: () => setState(() => _selectedPriority = p['id'] as String),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: p['color'] as Color,
+                      foregroundColor: color,
                       side: BorderSide(
-                        color: isSelected ? p['color'] as Color : AppColors.divider,
+                        color: isSelected ? color : context.divider,
                         width: isSelected ? 2 : 1,
                       ),
                       backgroundColor: isSelected
-                          ? (p['color'] as Color).withOpacity(0.08)
-                          : Colors.white,
+                          ? color.withValues(alpha: 0.12)
+                          : context.surface,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                          borderRadius: BorderRadius.circular(20)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                     child: Text(
@@ -263,20 +255,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
             const SizedBox(height: 32),
 
-            // Кнопки «Скасувати» та «Створити / Зберегти»
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    // Закриває екран без повернення даних
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.divider),
+                      foregroundColor: context.textSecondary,
+                      side: BorderSide(color: context.divider),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: const Text('Скасувати', style: TextStyle(fontSize: 16)),
                   ),
@@ -291,8 +280,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       elevation: 3,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                     child: Text(
                       _isEditing ? 'Зберегти' : 'Створити',
@@ -310,38 +298,34 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
-        letterSpacing: 0.5,
-      ),
-    );
-  }
+  Widget _sectionLabel(String text) => Text(
+    text,
+    style: TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: context.textSecondary,
+      letterSpacing: 0.5,
+    ),
+  );
 
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textHint),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.divider),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.divider),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-      counterStyle: const TextStyle(color: AppColors.textHint),
-    );
-  }
+  InputDecoration _inputDecor(String hint) => InputDecoration(
+    hintText: hint,
+    hintStyle: TextStyle(color: context.textHint),
+    filled: true,
+    fillColor: context.surface,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: context.divider),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: context.divider),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+    ),
+    counterStyle: TextStyle(color: context.textHint),
+  );
 }
