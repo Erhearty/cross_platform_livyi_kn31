@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/task_list_screen.dart';
 import 'colors.dart';
+import 'routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -54,7 +54,8 @@ class MyApp extends StatelessWidget {
           }),
         ),
       ),
-      home: const TaskListScreen(),
+      initialRoute: AppRoutes.taskList,
+      onGenerateRoute: onGenerateRoute,
     );
   }
 }
